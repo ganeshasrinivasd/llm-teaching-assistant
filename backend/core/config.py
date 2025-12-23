@@ -13,6 +13,10 @@ from pydantic import Field, field_validator
 from functools import lru_cache
 
 
+# Get the project root directory (where this config.py is located, go up one level)
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+
+
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
@@ -37,11 +41,11 @@ class Settings(BaseSettings):
     grobid_timeout: int = 120  # seconds
     use_grobid: bool = True  # Can disable for abstract-only mode
     
-    # File Paths
-    data_dir: Path = Path("data")
-    faiss_index_path: Path = Path("data/faiss/papers.index")
-    urls_json_path: Path = Path("data/faiss/urls.json")
-    cache_dir: Path = Path("data/cache")
+    # File Paths - Now absolute paths based on PROJECT_ROOT
+    data_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "data")
+    faiss_index_path: Path = Field(default_factory=lambda: PROJECT_ROOT / "data" / "faiss" / "papers.index")
+    urls_json_path: Path = Field(default_factory=lambda: PROJECT_ROOT / "data" / "faiss" / "urls.json")
+    cache_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "data" / "cache")
     
     # Cache Settings
     cache_enabled: bool = True
@@ -65,12 +69,6 @@ class Settings(BaseSettings):
     def validate_api_key(cls, v: str) -> str:
         if not v or v == "your-api-key-here":
             raise ValueError("Valid OpenAI API key is required")
-        return v
-    
-    @field_validator("data_dir", "cache_dir", mode="after")
-    @classmethod
-    def create_directories(cls, v: Path) -> Path:
-        v.mkdir(parents=True, exist_ok=True)
         return v
     
     def ensure_directories(self):
