@@ -2,13 +2,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sun, Moon, Menu, X, GraduationCap } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
-import Button from './Button'
-import { cn } from '@/lib/utils'
 
 interface NavItem {
   label: string
   href: string
-  icon?: React.ReactNode
 }
 
 const navItems: NavItem[] = [
@@ -18,7 +15,7 @@ const navItems: NavItem[] = [
 ]
 
 export default function Header() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { setTheme, resolvedTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const toggleTheme = () => {

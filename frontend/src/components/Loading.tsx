@@ -27,29 +27,6 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
   )
 }
 
-interface LoadingDotsProps {
-  className?: string
-}
-
-export function LoadingDots({ className }: LoadingDotsProps) {
-  return (
-    <div className={cn('flex items-center gap-1', className)}>
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className="w-2 h-2 rounded-full bg-primary-500"
-          animate={{ y: [0, -8, 0] }}
-          transition={{
-            duration: 0.6,
-            repeat: Infinity,
-            delay: i * 0.15,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
 interface LoadingOverlayProps {
   message?: string
 }
@@ -67,39 +44,5 @@ export function LoadingOverlay({ message = 'Loading...' }: LoadingOverlayProps) 
         <p className="text-gray-600 dark:text-gray-400">{message}</p>
       </div>
     </motion.div>
-  )
-}
-
-interface SkeletonProps {
-  className?: string
-}
-
-export function Skeleton({ className }: SkeletonProps) {
-  return (
-    <div
-      className={cn(
-        'animate-pulse bg-gray-200 dark:bg-gray-700 rounded',
-        className
-      )}
-    />
-  )
-}
-
-export function LessonSkeleton() {
-  return (
-    <div className="space-y-4 p-6">
-      <Skeleton className="h-8 w-3/4" />
-      <Skeleton className="h-4 w-1/2" />
-      <div className="space-y-3 mt-6">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="space-y-2">
-            <Skeleton className="h-6 w-1/3" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-4/5" />
-          </div>
-        ))}
-      </div>
-    </div>
   )
 }

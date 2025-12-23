@@ -1,5 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_URL 
-  ? `${import.meta.env.VITE_API_URL}/api/v1`
+const API_BASE = (import.meta as any).env?.VITE_API_URL 
+  ? `${(import.meta as any).env.VITE_API_URL}/api/v1`
   : '/api/v1'
 
 export interface LessonRequest {
@@ -41,8 +41,6 @@ export interface Problem {
   statement: string
   url: string
   topics: string[]
-  acceptance_rate?: number
-  hints?: string[]
 }
 
 export interface ProblemResponse {
@@ -57,7 +55,6 @@ export interface StreamChunk {
   data: Record<string, unknown>
 }
 
-// Non-streaming lesson generation
 export async function generateLesson(request: LessonRequest): Promise<LessonResponse> {
   const response = await fetch(`${API_BASE}/teach`, {
     method: 'POST',
@@ -67,48 +64,6 @@ export async function generateLesson(request: LessonRequest): Promise<LessonResp
   return response.json()
 }
 
-// Streaming lesson generation
-export async function* generateLessonStream(
-  request: LessonRequest
-): AsyncGenerator<StreamChunk> {
-  const response = await fetch(`${API_BASE}/teach/stream`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  })
-
-  if (!response.ok) {
-    throw new Error('Failed to start streaming')
-  }
-
-  const reader = response.body?.getReader()
-  if (!reader) throw new Error('No reader available')
-
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() || ''
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const data = JSON.parse(line.slice(6))
-          yield data as StreamChunk
-        } catch {
-          // Skip invalid JSON
-        }
-      }
-    }
-  }
-}
-
-// Get random LeetCode problem
 export async function getRandomProblem(
   difficulties: string[] = ['Medium', 'Hard']
 ): Promise<ProblemResponse> {
@@ -120,13 +75,6 @@ export async function getRandomProblem(
   return response.json()
 }
 
-// Health check
-export async function checkHealth(): Promise<{ status: string; version: string }> {
-  const response = await fetch('/health')
-  return response.json()
-}
-
-// Search papers
 export async function searchPapers(query: string, topK: number = 5) {
   const response = await fetch(`${API_BASE}/search`, {
     method: 'POST',

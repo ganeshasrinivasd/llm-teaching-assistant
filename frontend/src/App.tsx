@@ -27,7 +27,7 @@ export default function App() {
           difficulty: 'beginner',
           include_examples: true,
           include_math: true,
-          max_sections: 5,  // ← ADD THIS LINE
+          max_sections: 5,
         }
 
         const response = await generateLesson(request)
@@ -92,7 +92,6 @@ export default function App() {
           <Hero onSubmit={handleSubmit} isLoading={isLoading} />
         </main>
 
-        {/* Modals */}
         <AnimatePresence>
           {viewState.type === 'loading' && (
             <LoadingOverlay message={viewState.message} />
@@ -115,7 +114,6 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Error Toast */}
         <AnimatePresence>
           {viewState.type === 'error' && (
             <div className="fixed bottom-4 right-4 z-50">

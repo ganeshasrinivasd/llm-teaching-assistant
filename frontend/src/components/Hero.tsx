@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, ArrowRight, BookOpen, Code, Search } from 'lucide-react'
+import { Sparkles, ArrowRight, BookOpen, Code } from 'lucide-react'
 import Button from './Button'
 import { Textarea } from './Input'
 

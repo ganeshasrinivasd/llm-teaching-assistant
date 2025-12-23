@@ -1,11 +1,9 @@
-import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Code, 
   ExternalLink, 
   X,
   Tag,
-  BarChart3,
   RefreshCw
 } from 'lucide-react'
 import { Card, CardContent, CardHeader } from './Card'

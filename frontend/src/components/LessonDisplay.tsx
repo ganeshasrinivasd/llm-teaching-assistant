@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader } from './Card'
 import Button from './Button'
 import { Lesson, LessonFragment } from '@/lib/api'
-import { cn, formatReadTime } from '@/lib/utils'
+import { formatReadTime } from '@/lib/utils'
 
 interface LessonDisplayProps {
   lesson: Lesson
@@ -24,7 +24,7 @@ interface LessonDisplayProps {
 
 export default function LessonDisplay({ lesson, onClose }: LessonDisplayProps) {
   const [expandedSections, setExpandedSections] = useState<Set<number>>(
-    new Set(lesson.fragments.map((_, i) => i)) // All expanded by default
+    new Set(lesson.fragments.map((_, i) => i))
   )
   const [copied, setCopied] = useState(false)
 
