@@ -1,147 +1,158 @@
 """
-Teaching Routes
+Teaching API Routes v2
 
-Endpoints for lesson generation and paper search.
+Endpoints:
+- POST /teach - Generate lesson (with query enhancement)
+- POST /teach/stream - Stream lesson generation
+- GET /stats - Service statistics
+- POST /search - Search papers
+
+Changes in v2:
+- Added /stats endpoint
+- Added /search endpoint
+- Query enhancement by default
 """
 
 import json
 from typing import Optional
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from core.logging import get_logger
+from core.exceptions import PaperNotFoundError
 from models.lesson import LessonRequest, LessonResponse, LessonDifficulty
-from models.paper import PaperSearchRequest
 from services.teaching_service import get_teaching_service
 
-router = APIRouter()
 logger = get_logger(__name__)
 
-
-class TeachRequest(BaseModel):
-    """Request to learn about a topic."""
-    query: str = Field(..., min_length=3, max_length=500, description="What do you want to learn?")
-    difficulty: LessonDifficulty = Field(LessonDifficulty.BEGINNER, description="Lesson difficulty")
-    include_examples: bool = Field(True, description="Include examples")
-    include_math: bool = Field(True, description="Include step-by-step math")
-    max_sections: Optional[int] = Field(None, ge=1, le=20, description="Limit sections")
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "query": "attention mechanisms in transformers",
-                "difficulty": "beginner",
-                "include_examples": True,
-                "include_math": True
-            }
-        }
+router = APIRouter()
 
 
 class SearchRequest(BaseModel):
-    """Request to search for papers."""
-    query: str = Field(..., min_length=3, max_length=500)
-    top_k: int = Field(5, ge=1, le=20)
+    """Search request model."""
+    query: str
+    top_k: int = 5
+
+
+class SearchResponse(BaseModel):
+    """Search response model."""
+    success: bool
+    query: str
+    results: list[dict]
 
 
 @router.post("/teach", response_model=LessonResponse)
-async def teach(request: TeachRequest):
+async def generate_lesson(request: LessonRequest):
     """
-    Generate a lesson about a topic.
+    Generate a lesson for a query.
     
-    This endpoint:
-    1. Searches for the most relevant research paper
-    2. Parses the paper into sections
-    3. Generates beginner-friendly explanations for each section
+    v2 Features:
+    - Automatically enhances query for better search
+    - Checks relevance threshold (0.50/0.35)
+    - Dynamically fetches papers if no good match
     
+    Args:
+        request: LessonRequest with query and preferences
+        
     Returns:
-        Complete lesson with all sections
+        LessonResponse with generated lesson or error
     """
-    logger.info(f"Teach request: {request.query[:50]}...")
+    logger.info(f"POST /teach: {request.query[:50]}...")
     
-    teaching_service = get_teaching_service()
-    
-    lesson_request = LessonRequest(
-        query=request.query,
-        difficulty=request.difficulty,
-        include_examples=request.include_examples,
-        include_math=request.include_math,
-        max_sections=request.max_sections
-    )
-    
-    return teaching_service.teach(lesson_request)
+    try:
+        teaching_service = get_teaching_service()
+        response = teaching_service.teach(request)
+        return response
+        
+    except Exception as e:
+        logger.error(f"Lesson generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/teach/stream")
-async def teach_streaming(request: TeachRequest):
+async def stream_lesson(request: LessonRequest):
     """
-    Generate a lesson with streaming responses.
+    Stream lesson generation via Server-Sent Events.
     
-    Returns Server-Sent Events (SSE) as sections are generated.
-    
-    Event types:
-    - `metadata`: Paper information
-    - `section`: Generated lesson section
-    - `done`: Generation complete
-    - `error`: Error occurred
+    Yields chunks as sections are generated.
     """
-    logger.info(f"Streaming teach request: {request.query[:50]}...")
+    logger.info(f"POST /teach/stream: {request.query[:50]}...")
     
     teaching_service = get_teaching_service()
     
-    lesson_request = LessonRequest(
-        query=request.query,
-        difficulty=request.difficulty,
-        include_examples=request.include_examples,
-        include_math=request.include_math,
-        max_sections=request.max_sections
-    )
-    
     async def event_generator():
-        async for chunk in teaching_service.teach_streaming(lesson_request):
+        async for chunk in teaching_service.teach_streaming(request):
             yield f"data: {json.dumps(chunk.model_dump())}\n\n"
     
     return StreamingResponse(
         event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        }
+        media_type="text/event-stream"
     )
 
 
-@router.post("/search")
+@router.post("/search", response_model=SearchResponse)
 async def search_papers(request: SearchRequest):
     """
-    Search for relevant papers.
+    Search for papers without generating lessons.
     
-    Returns a list of papers matching the query, ranked by relevance.
+    Useful for:
+    - Previewing available papers
+    - Checking relevance scores
+    - Exploring the index
     """
-    logger.info(f"Search request: {request.query[:50]}...")
+    logger.info(f"POST /search: {request.query[:50]}...")
     
-    teaching_service = get_teaching_service()
-    results = teaching_service.search_papers(request.query, top_k=request.top_k)
-    
-    return {
-        "query": request.query,
-        "results": [r.model_dump() for r in results],
-        "count": len(results)
-    }
+    try:
+        teaching_service = get_teaching_service()
+        results = teaching_service.search_papers(request.query, top_k=request.top_k)
+        
+        return SearchResponse(
+            success=True,
+            query=request.query,
+            results=[
+                {
+                    "arxiv_id": r.paper.arxiv_id,
+                    "title": r.paper.title,
+                    "url": str(r.paper.url),
+                    "similarity_score": r.similarity_score
+                }
+                for r in results
+            ]
+        )
+        
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        return SearchResponse(
+            success=False,
+            query=request.query,
+            results=[]
+        )
 
 
-@router.get("/paper")
-async def get_paper(
-    url: str = Query(..., description="arXiv paper URL")
-):
+@router.get("/stats")
+async def get_stats():
     """
-    Get detailed information about a specific paper.
+    Get service statistics.
     
-    Returns parsed paper with sections.
+    Returns:
+    - Index size (number of papers)
+    - Daily fetch usage
+    - Threshold settings
+    - Cache stats
     """
-    logger.info(f"Paper request: {url}")
-    
-    teaching_service = get_teaching_service()
-    paper = teaching_service.get_paper_details(url)
-    
-    return paper.model_dump()
+    try:
+        teaching_service = get_teaching_service()
+        stats = teaching_service.get_stats()
+        
+        return {
+            "success": True,
+            "stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Stats failed: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }

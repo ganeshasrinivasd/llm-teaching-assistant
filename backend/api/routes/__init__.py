@@ -1,9 +1,11 @@
 """
-API Routes Package
+API Routes Package v2
+
+Changes:
+- Removed leetcode routes
 """
 
 from . import health
 from . import teach
-from . import leetcode
 
-__all__ = ["health", "teach", "leetcode"]
+__all__ = ["health", "teach"]
