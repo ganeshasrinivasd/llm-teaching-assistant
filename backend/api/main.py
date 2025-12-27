@@ -1,7 +1,11 @@
 """
-FastAPI Application
+FastAPI Application v2
 
 Main entry point for the LLM Teaching Assistant API.
+
+Changes in v2:
+- Removed LeetCode routes
+- Updated description
 """
 
 import time
@@ -13,7 +17,7 @@ from fastapi.responses import JSONResponse
 from core.config import get_settings
 from core.logging import get_logger
 from core.exceptions import BaseAppException
-from api.routes import teach, leetcode, health
+from api.routes import teach, health
 
 logger = get_logger(__name__)
 
@@ -25,6 +29,8 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"Dynamic fetch: {settings.dynamic_fetch_enabled}")
+    logger.info(f"Thresholds: high={settings.high_relevance_threshold}, medium={settings.medium_relevance_threshold}")
     
     yield
     
@@ -40,19 +46,20 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         description="""
-        🎓 **LLM Teaching Assistant API**
+        🎓 **LLM Teaching Assistant API v2**
         
         An AI-powered teaching assistant that:
         - Retrieves and explains research papers from arXiv
         - Converts academic content into beginner-friendly lessons
-        - Provides LeetCode problems for coding practice
+        - **Dynamically fetches new papers** when no good match exists
+        - **Enhances queries** for better search results
         
-        ## Features
+        ## What's New in v2
         
-        - **Semantic Search**: Find relevant papers using natural language
-        - **Lesson Generation**: Get step-by-step explanations
-        - **Streaming Support**: Real-time lesson generation via SSE
-        - **Coding Practice**: Random LeetCode problems
+        - **Relevance Thresholds**: Only uses papers above quality threshold
+        - **Dynamic Fetching**: Searches Semantic Scholar when needed
+        - **Query Enhancement**: LLM improves search queries
+        - **Intent Detection**: Adapts to explain/compare/simplify requests
         
         ## Quick Start
         
@@ -62,10 +69,17 @@ def create_app() -> FastAPI:
         # Generate a lesson
         response = requests.post(
             "http://localhost:8000/api/v1/teach",
-            json={"query": "attention mechanisms in transformers"}
+            json={"query": "Explain attention mechanisms"}
         )
         lesson = response.json()
         ```
+        
+        ## Endpoints
+        
+        - `POST /api/v1/teach` - Generate a lesson
+        - `POST /api/v1/teach/stream` - Stream lesson generation
+        - `GET /api/v1/stats` - Service statistics
+        - `GET /health` - Health check
         """,
         docs_url="/docs",
         redoc_url="/redoc",
@@ -117,7 +131,6 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health.router, tags=["Health"])
     app.include_router(teach.router, prefix=settings.api_prefix, tags=["Teaching"])
-    app.include_router(leetcode.router, prefix=settings.api_prefix, tags=["LeetCode"])
     
     return app
 
